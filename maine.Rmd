@@ -6,25 +6,87 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
+library(gganimate)
+library(readxl)
+library(janitor)
+library(tidyverse)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+## Step 1
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-summary(cars)
+```{r}
+
+data.1 <- read_excel("Nov18CVRExportRaw-1.xlsx")
+data.2 <- read_excel("Nov18CVRExportRaw-2.xlsx")
+data.3 <- read_excel("Nov18CVRExportRaw-3.xlsx")
+
+x <- bind_rows(data.1, data.2, data.3) %>% 
+  clean_names() %>% 
+  rename(choice_1 = rep_to_congress_1st_choice_district_2) %>% 
+  rename(choice_2 = rep_to_congress_2nd_choice_district_2) %>% 
+  rename(choice_3 = rep_to_congress_3rd_choice_district_2) %>% 
+  rename(choice_4 = rep_to_congress_4th_choice_district_2) %>% 
+  rename(choice_5 = rep_to_congress_5th_choice_district_2) %>%
+  arrange(precinct) %>% 
+  rename(vote = cast_vote_record) %>% 
+  mutate(vote_id = row_number())
+  
+  
+  
+  
+
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+## Step 2
+
+```{r}
+# Sure would be nice to have a function which turns choices into 1 for a vote
+# and 0 for not a vote.
+
+choice_to_votes <- function(choice, name){
+  
+  # So, choice_to_votes(x$choice_1, "Golden") would produce a vector of the same
+  # length as choice_1 which has a 1 if the vote was for Golden and a zero
+  # otherwise.
+  
+  str_count(choice, name)
+  
+}
+
+
+y <- x %>% 
+  select(vote_id, precinct, ballot_style, choice_1) %>% 
+  mutate(Poliquin = choice_to_votes(choice_1, "Poliquin")) %>% 
+  mutate(Golden = choice_to_votes(choice_1, "Golden")) %>%
+  mutate(Bond = choice_to_votes(choice_1, "Bond")) 
+
+  
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Step 3
+
+
+```{r}
+tibble_2 <- read_rds("tibble_2.rds")
+
+ggplot(data = tibble_2, aes(x = vote_id, y = cum_votes, color = candidate)) +
+  geom_line() +
+  theme(axis.title.x = element_blank()) +
+  labs(title = "Cumulative Voting in Maine's Second Congressional District", 
+       subtitle = "Representative Polquin Leads Democratic Challenger Golden in First Round", 
+       x = "", 
+       y = "Cumulative First Round Votes") +
+  transition_time(vote_id) +
+  shadow_trail()
+  
+  
+
+```
+
+
+
